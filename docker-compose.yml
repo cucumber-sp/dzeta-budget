@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: dzeta-budget-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dzeta_budget
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dzeta-budget-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dzeta-budget-backend
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/dzeta_budget?schema=public
+      - JWT_SECRET=dzeta-budget-secret-key
+      - COIN_API_KEY=${COIN_API_KEY}
+      - UPLOAD_PATH=/app/uploads
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - uploads:/app/uploads
+    networks:
+      - dzeta-budget-network
+    command: sh -c "npx prisma migrate deploy && npm start"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dzeta-budget-frontend
+    ports:
+      - "80:80"
+    networks:
+      - dzeta-budget-network
+    depends_on:
+      - backend
+
+networks:
+  dzeta-budget-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  uploads: 
